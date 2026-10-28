@@ -1,3 +1,4 @@
+from streamlit_agraph import agraph, Node, Edge, Config
 from pathlib import Path
 import pandas as pd
 import networkx as nx
@@ -431,118 +432,230 @@ st.caption(
 )
 
 
+
+
 # =====================================================
-# 6. VISUALISASI JARINGAN
+# 6. VISUALISASI INTERAKTIF + ANIMASI KRUSKAL
 # =====================================================
 
 st.markdown("### LIVE TOPOLOGY")
-st.header("Visualisasi Jaringan")
+st.header("Visualisasi dan Simulasi Kruskal")
 
-st.markdown(
-    '<p style="color:#98acc9">'
-    '🔵 Simpul &nbsp;&nbsp; '
-    '🔴 Koneksi dalam MST terbaru &nbsp;&nbsp; '
-    '⚪ Koneksi kandidat lainnya'
-    '</p>',
-    unsafe_allow_html=True
+st.caption(
+    "Geser simpul dengan mouse. Jalankan simulasi untuk melihat "
+    "algoritma Kruskal memeriksa koneksi satu per satu."
 )
 
-# Posisi simpul tetap agar tidak berubah-ubah setiap perhitungan
-pos = nx.spring_layout(
-    g0,
-    seed=42,
-    weight=None,
-    k=0.8,
-    iterations=100
+# Urutkan koneksi berdasarkan bobot, sama seperti algoritma Kruskal
+urutan_koneksi = sorted(
+    g.edges(data=True),
+    key=lambda e: (
+        float(e[2]["weight"]),
+        min(str(e[0]), str(e[1])),
+        max(str(e[0]), str(e[1]))
+    )
 )
 
-mst_edges = {
-    key_edge(u, v)
-    for u, v in mst.edges()
-}
+# Buat catatan setiap langkah Kruskal
+parent_anim = {n: n for n in g.nodes()}
+rank_anim = {n: 0 for n in g.nodes()}
 
-fig = go.Figure()
+def find_anim(n):
+    if parent_anim[n] != n:
+        parent_anim[n] = find_anim(parent_anim[n])
+    return parent_anim[n]
 
-# Setiap koneksi digambar satu kali.
-# Warna ditentukan dari hasil MST terbaru.
-for u, v, attr in g.edges(data=True):
-    x0, y0 = pos[u]
-    x1, y1 = pos[v]
+def union_anim(a, b):
+    ra, rb = find_anim(a), find_anim(b)
 
-    in_mst = key_edge(u, v) in mst_edges
+    if ra == rb:
+        return False
 
-    fig.add_trace(
-        go.Scatter(
-            x=[x0, x1],
-            y=[y0, y1],
-            mode="lines",
-            line=dict(
-                color="#ff5263" if in_mst else "#52627b",
-                width=4 if in_mst else 1.4
-            ),
-            hovertemplate=(
-                f"<b>{'Koneksi MST' if in_mst else 'Koneksi kandidat'}</b>"
-                f"<br>{u} — {v}"
-                f"<br>Panjang: {attr['weight']:.2f} m"
-                "<extra></extra>"
-            ),
-            showlegend=False
+    if rank_anim[ra] < rank_anim[rb]:
+        parent_anim[ra] = rb
+    elif rank_anim[ra] > rank_anim[rb]:
+        parent_anim[rb] = ra
+    else:
+        parent_anim[rb] = ra
+        rank_anim[ra] += 1
+
+    return True
+
+langkah_anim = []
+diterima_anim = []
+
+for u, v, attr in urutan_koneksi:
+    diterima = union_anim(u, v)
+
+    if diterima:
+        diterima_anim.append(key_edge(u, v))
+
+    langkah_anim.append({
+        "u": u,
+        "v": v,
+        "weight": float(attr["weight"]),
+        "accepted": diterima,
+        "selected": diterima_anim.copy()
+    })
+
+    if len(diterima_anim) == g.number_of_nodes() - 1:
+        break
+
+# Status pemutar animasi
+if "kruskal_step" not in st.session_state:
+    st.session_state["kruskal_step"] = 0
+
+if "kruskal_playing" not in st.session_state:
+    st.session_state["kruskal_playing"] = False
+
+jumlah_langkah = len(langkah_anim)
+st.session_state["kruskal_step"] = min(
+    max(0, st.session_state["kruskal_step"]),
+    max(0, jumlah_langkah - 1)
+)
+
+# Kontrol simulasi
+p1, p2, p3, p4, p5 = st.columns(5)
+
+with p1:
+    if st.button("▶ Jalankan", use_container_width=True):
+        st.session_state["kruskal_playing"] = True
+
+with p2:
+    if st.button("⏸ Jeda", use_container_width=True):
+        st.session_state["kruskal_playing"] = False
+
+with p3:
+    if st.button("⏮ Sebelumnya", use_container_width=True):
+        st.session_state["kruskal_playing"] = False
+        st.session_state["kruskal_step"] = max(
+            0, st.session_state["kruskal_step"] - 1
         )
-    )
 
-# Menggambar simpul
-fig.add_trace(
-    go.Scatter(
-        x=[pos[n][0] for n in g.nodes()],
-        y=[pos[n][1] for n in g.nodes()],
-        mode="markers+text",
-        text=list(g.nodes()),
-        textposition="top center",
-        textfont=dict(
-            size=11,
-            color="#eaf1ff"
-        ),
-        marker=dict(
-            size=15,
+with p4:
+    if st.button("⏭ Berikutnya", use_container_width=True):
+        st.session_state["kruskal_playing"] = False
+        st.session_state["kruskal_step"] = min(
+            jumlah_langkah - 1,
+            st.session_state["kruskal_step"] + 1
+        )
+
+with p5:
+    if st.button("↺ Reset", use_container_width=True):
+        st.session_state["kruskal_playing"] = False
+        st.session_state["kruskal_step"] = 0
+
+# Fragment menjalankan animasi otomatis setiap 1 detik saat diputar
+@st.fragment(
+    run_every=1.0 if st.session_state["kruskal_playing"] else None
+)
+def tampilkan_simulasi():
+    idx = st.session_state["kruskal_step"]
+    langkah = langkah_anim[idx]
+
+    if st.session_state["kruskal_playing"]:
+        if idx < jumlah_langkah - 1:
+            st.session_state["kruskal_step"] = idx + 1
+        else:
+            st.session_state["kruskal_playing"] = False
+
+    # Langkah yang ditampilkan
+    idx = st.session_state["kruskal_step"]
+    langkah = langkah_anim[idx]
+
+    st.progress((idx + 1) / jumlah_langkah)
+    st.caption(f"Langkah {idx + 1} dari {jumlah_langkah}")
+
+    u, v = langkah["u"], langkah["v"]
+
+    if langkah["accepted"]:
+        st.success(
+            f"Koneksi {u} — {v} ({langkah['weight']:.2f} m) "
+            "DITERIMA: tidak membentuk siklus."
+        )
+    else:
+        st.warning(
+            f"Koneksi {u} — {v} ({langkah['weight']:.2f} m) "
+            "DITOLAK: membentuk siklus."
+        )
+
+    # Warna koneksi:
+    # merah = sudah diterima, kuning = sedang diperiksa,
+    # abu-abu = belum dipilih atau ditolak.
+    koneksi_diterima = set(langkah["selected"])
+    koneksi_sekarang = key_edge(u, v)
+
+    nodes = [
+        Node(
+            id=str(n),
+            label=str(n),
+            size=24,
             color="#43a5ff",
-            line=dict(
-                color="#d9ecff",
-                width=1.2
+            font={"color": "#eaf1ff", "size": 15},
+            borderWidth=2
+        )
+        for n in g.nodes()
+    ]
+
+    edges = []
+
+    for a, b, attr in g.edges(data=True):
+        k = key_edge(a, b)
+
+        if k == koneksi_sekarang:
+            warna = "#fbbf24"
+            lebar = 6
+        elif k in koneksi_diterima:
+            warna = "#ff5263"
+            lebar = 4
+        else:
+            warna = "#52627b"
+            lebar = 1
+
+        edges.append(
+            Edge(
+                source=str(a),
+                target=str(b),
+                label=f"{attr['weight']:.0f} m",
+                color=warna,
+                width=lebar,
+                title=(
+                    f"{a} — {b}: {attr['weight']:.2f} m"
+                )
             )
-        ),
-        hovertemplate="<b>Simpul %{text}</b><extra></extra>",
-        showlegend=False
-    )
-)
+        )
 
-fig.update_layout(
-    height=600,
-    margin=dict(l=10, r=10, t=10, b=10),
-    paper_bgcolor="rgba(0,0,0,0)",
-    plot_bgcolor="rgba(0,0,0,0)",
-    font=dict(color="#eaf1ff"),
-    xaxis=dict(visible=False),
-    yaxis=dict(
-        visible=False,
-        scaleanchor="x",
-        scaleratio=1
-    ),
-    hoverlabel=dict(
-        bgcolor="#111a2b",
-        bordercolor="#314867",
-        font=dict(color="#eaf1ff")
+    config = Config(
+        width="100%",
+        height=560,
+        directed=False,
+        physics=False,
+        hierarchical=False,
+        nodeHighlightBehavior=True,
+        highlightColor="#ffd166",
+        collapsible=False,
+        interaction={
+            "dragNodes": True,
+            "dragView": True,
+            "zoomView": True
+        }
     )
-)
 
-st.plotly_chart(
-    fig,
-    use_container_width=True,
-    config={
-        "displayModeBar": True,
-        "scrollZoom": True
-    },
-    key="graf_mst_interaktif"
-)
+    agraph(nodes=nodes, edges=edges, config=config)
+
+    st.caption(
+        "🟡 Sedang diperiksa · 🔴 Diterima dalam MST · "
+        "Abu-abu: koneksi lainnya"
+    )
+
+    st.metric(
+        "Koneksi diterima sampai langkah ini",
+        len(langkah["selected"])
+    )
+
+tampilkan_simulasi()
+
+
 
 
 # =====================================================
