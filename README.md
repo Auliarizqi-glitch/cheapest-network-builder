@@ -1,224 +1,164 @@
-# Cheapest Network Builder
+Cheapest Network Builder
 
-## 1. Deskripsi Proyek
+1. Deskripsi Proyek
 
-Cheapest Network Builder merupakan aplikasi berbasis web untuk membangun jaringan dengan total panjang minimum menggunakan algoritma Minimum Spanning Tree (MST). Aplikasi ini menerapkan algoritma Kruskal untuk memilih koneksi dengan bobot terkecil tanpa membentuk siklus sehingga seluruh simpul dapat terhubung dengan total panjang minimum.
+Cheapest Network Builder merupakan aplikasi berbasis Python untuk menentukan jaringan koneksi dengan total panjang minimum menggunakan algoritma Kruskal. Proyek ini memodelkan permasalahan jaringan sebagai graf berbobot tak berarah.
 
-Proyek ini menggunakan dataset jaringan jalan Surabaya. Graf dimodelkan sebagai graf tak berarah, dengan simpul merepresentasikan titik jaringan, sisi merepresentasikan koneksi yang dapat digunakan, dan bobot sisi berupa panjang koneksi dalam meter.
+Dataset yang digunakan adalah Surabaya_Edgelist.csv, yang memuat informasi titik awal, titik akhir, dan panjang koneksi dalam meter.
 
-Aplikasi menyediakan visualisasi jaringan interaktif, perhitungan MST, fitur perubahan panjang koneksi, perbandingan hasil MST sebelum dan sesudah perubahan, validasi hasil, serta estimasi biaya berdasarkan tarif simulasi.
+2. Tujuan Proyek
 
-Estimasi biaya dihitung dengan mengalikan total panjang jaringan dengan tarif simulasi per meter. Tarif tersebut merupakan asumsi untuk keperluan simulasi dan bukan harga pemasangan aktual.
+Tujuan proyek ini adalah:
 
-## 2. Tujuan Proyek
+Memodelkan jaringan koneksi menggunakan teori graf.
 
-1. Memodelkan jaringan menggunakan teori graf.
-2. Menentukan Minimum Spanning Tree menggunakan algoritma Kruskal.
-3. Menampilkan jaringan dan hasil MST melalui visualisasi interaktif.
-4. Mengamati pengaruh perubahan panjang koneksi terhadap struktur MST.
-5. Membandingkan koneksi yang masuk dan keluar dari MST setelah perubahan.
-6. Menghitung total panjang jaringan dan estimasi biaya berdasarkan tarif simulasi.
-7. Memvalidasi hasil MST berdasarkan keterhubungan, jumlah sisi, ketiadaan siklus, dan konsistensi perhitungan total panjang.
+Menentukan Minimum Spanning Tree (MST) dengan algoritma Kruskal.
 
-## 3. Model Graf
+Menampilkan visualisasi jaringan sebelum dan sesudah perubahan panjang koneksi.
 
-Jaringan dimodelkan menggunakan graf tak berarah berbobot, yaitu \(G=(V,E)\), dengan:
+Mengamati perubahan koneksi yang terpilih dalam MST ketika bobot sisi diubah.
 
-- \(V\): himpunan simpul yang merepresentasikan titik jaringan.
-- \(E\): himpunan sisi yang merepresentasikan koneksi kandidat.
-- \(w(e)\): bobot sisi berupa panjang koneksi dalam meter.
+Memvalidasi hasil MST yang diperoleh.
 
-Tujuan perhitungan adalah menentukan Minimum Spanning Tree yang menghubungkan seluruh simpul dengan total panjang minimum.
+3. Model Graf
 
-Total panjang MST dihitung dengan menjumlahkan panjang seluruh sisi terpilih:
+Jaringan dimodelkan sebagai graf berbobot tak berarah dengan:
 
-\[
-L_{\mathrm{MST}}=\sum_{e\in T}w(e)
-\]
+Simpul (vertex): titik atau lokasi dalam jaringan.
 
-dengan \(T\) merupakan himpunan sisi yang terpilih dalam MST.
+Sisi (edge): koneksi yang menghubungkan dua simpul.
 
-Estimasi biaya pemasangan dihitung menggunakan:
+Bobot (weight): panjang koneksi dalam meter.
 
-\[
-C_{\mathrm{MST}}=L_{\mathrm{MST}}\times r
-\]
+Aplikasi menggunakan subgraf yang terdiri atas 15 simpul dan 27 kandidat koneksi. Karena graf terhubung, MST memiliki 14 sisi.
 
-dengan \(r\) merupakan tarif simulasi pemasangan per meter.
+4. Algoritma Kruskal
 
-**Batas interpretasi:** hasil minimum hanya berlaku pada daftar koneksi kandidat yang digunakan dalam simulasi. Hambatan fisik, kapasitas kabel, kondisi lapangan, dan biaya pemeliharaan belum diperhitungkan.
+Algoritma Kruskal digunakan untuk memperoleh Minimum Spanning Tree, yaitu pohon rentang yang menghubungkan seluruh simpul dengan total bobot minimum.
 
-## 4. Teknologi yang Digunakan
+Langkah-langkah algoritma:
 
-- **Python:** bahasa pemrograman untuk menjalankan logika aplikasi dan perhitungan.
-- **Streamlit:** membangun antarmuka aplikasi web interaktif.
-- **NetworkX:** memodelkan graf dan membantu perhitungan MST.
-- **Pandas:** membaca dan mengolah dataset.
-- **Plotly:** menampilkan visualisasi jaringan secara interaktif.
+Mengurutkan seluruh sisi berdasarkan bobot dari yang terkecil.
 
-## 5. Struktur File
+Memilih sisi dengan bobot terkecil.
 
-```text
+Menambahkan sisi jika tidak membentuk siklus.
+
+Mengulangi proses hingga diperoleh sebanyak (n-1) sisi, dengan (n) merupakan jumlah simpul.
+
+5. Teknologi yang Digunakan
+
+Python
+
+Streamlit
+
+Pandas
+
+NetworkX
+
+Plotly
+
+6. Struktur File
+
 cheapest-network-builder/
 ├── main.py
 ├── main_backup.py
+├── requirements.txt
 ├── Surabaya_Edgelist.csv
 ├── README.md
 └── bukti_pengujian/
-    ├── 01_tampilan_awal.png
-    ├── 02_perubahan_bobot.png
-    ├── 03_hasil_mst.png
-    └── 04_validasi.png
-```
+    ├── 01_ringkasan jaringan.png.png
+    ├── 02_visualisasi_awal.png.png
+    ├── 03_panjang koneksi awal.png.png
+    ├── 04_panjang_koneksi_setelah_diubah.png.png
+    ├── 05_visualisasi_setelah_diubah.png.png
+    ├── 06_perbandingan_mst.png.png
+    └── 07_daftar_koneksi_mst.png.png
 
-Keterangan:
+7. Instalasi dan Cara Menjalankan
 
-- `main.py`: kode utama aplikasi interaktif.
-- `main_backup.py`: kode cadangan untuk pengolahan graf dan perhitungan MST.
-- `Surabaya_Edgelist.csv`: dataset jaringan jalan Surabaya.
-- `README.md`: dokumentasi proyek.
-- `bukti_pengujian/`: folder dokumentasi berupa tangkapan layar hasil pengujian.
+Pastikan Python telah terpasang. Buka terminal pada folder proyek, kemudian instal pustaka yang diperlukan:
 
-Nama file gambar pada struktur di atas merupakan contoh. Sesuaikan dengan nama screenshot yang benar-benar disimpan.
+python -m pip install -r requirements.txt
 
-## 6. Instalasi dan Cara Menjalankan
+Jalankan aplikasi menggunakan perintah:
 
-### 6.1 Persyaratan
-
-Pastikan Python sudah terpasang pada komputer dan seluruh file proyek berada dalam satu folder yang sesuai.
-
-### 6.2 Instalasi pustaka
-
-Buka terminal pada folder proyek, kemudian jalankan perintah:
-
-```bash
-pip install pandas networkx streamlit plotly
-```
-
-### 6.3 Menjalankan aplikasi
-
-Jalankan perintah berikut:
-
-```bash
 python -m streamlit run main.py
-```
 
-Aplikasi akan terbuka melalui browser. Jika browser tidak terbuka secara otomatis, ikuti alamat lokal yang ditampilkan pada terminal oleh Streamlit.
+Aplikasi akan terbuka melalui browser lokal.
 
-Pastikan file `Surabaya_Edgelist.csv` tersedia pada lokasi yang digunakan oleh kode aplikasi.
+8. Fitur Aplikasi
 
-## 7. Algoritma Kruskal
+Aplikasi Cheapest Network Builder memiliki fitur:
 
-Algoritma Kruskal digunakan untuk menentukan Minimum Spanning Tree dengan memilih sisi berdasarkan bobot terkecil dan menghindari pembentukan siklus.
+Menampilkan ringkasan jaringan.
 
-Tahapan algoritma:
+Memvisualisasikan seluruh kandidat koneksi dan MST.
 
-1. Mengurutkan sisi berdasarkan bobot dari yang terkecil.
-2. Memeriksa sisi satu per satu berdasarkan urutan bobot.
-3. Memilih sisi apabila penambahannya tidak membentuk siklus.
-4. Menolak sisi yang membentuk siklus.
-5. Mengulangi proses hingga seluruh simpul terhubung dan MST memiliki tepat \(n-1\) sisi, dengan \(n\) merupakan jumlah simpul.
-6. Menjumlahkan bobot seluruh sisi terpilih untuk memperoleh total panjang MST.
+Menampilkan total panjang jaringan dan estimasi biaya.
 
-Pada aplikasi ini, perubahan panjang suatu koneksi akan digunakan sebagai bobot terbaru dalam perhitungan ulang MST. Hasilnya kemudian dibandingkan dengan MST awal untuk mengetahui perubahan koneksi yang terpilih.
+Mengubah panjang koneksi melalui input yang tersedia.
 
-## 8. Fitur Aplikasi
+Membandingkan MST sebelum dan sesudah perubahan.
 
-1. **Visualisasi jaringan:** menampilkan simpul, koneksi kandidat, dan koneksi terpilih dalam MST.
-2. **Ringkasan jaringan:** menampilkan jumlah simpul, jumlah koneksi kandidat, jumlah sisi MST, total panjang MST, dan estimasi biaya.
-3. **Ubah panjang koneksi:** memungkinkan pengguna mengubah panjang salah satu koneksi kandidat.
-4. **Hitung ulang MST:** menjalankan kembali perhitungan Kruskal berdasarkan panjang koneksi terbaru.
-5. **Perbandingan MST:** menampilkan koneksi yang masuk atau keluar dari MST dibandingkan kondisi awal.
-6. **Reset bobot:** mengembalikan panjang koneksi ke kondisi awal.
-7. **Legenda visualisasi:** membedakan simpul, sisi MST, dan koneksi kandidat lainnya.
-8. **Validasi MST:** memeriksa keterhubungan graf, jumlah sisi, ketiadaan siklus, dan konsistensi total panjang.
-9. **Estimasi biaya:** menghitung perkiraan biaya berdasarkan total panjang MST dan tarif simulasi per meter.
+Menampilkan daftar koneksi yang termasuk dalam MST.
 
-## 9. Skenario Pengujian
+Memeriksa validitas hasil MST.
 
-### 9.1 Uji Coba 1: Kondisi Awal Jaringan
+9. Skenario Pengujian
 
-**Tujuan:** Mengetahui hasil pembentukan MST sebelum dilakukan perubahan panjang koneksi.
+9.1 Kondisi Awal
 
-**Langkah pengujian:**
+Hasil pengujian pada kondisi awal menunjukkan:
 
-1. Menjalankan aplikasi Cheapest Network Builder.
-2. Mengamati visualisasi jaringan awal.
-3. Memeriksa jumlah simpul dan koneksi kandidat.
-4. Mencatat total panjang MST dan estimasi biaya.
-5. Memeriksa hasil validasi MST.
+Jumlah simpul: 15.
 
-**Hasil aktual:**
+Jumlah kandidat koneksi: 27.
 
-Berdasarkan tampilan awal aplikasi, jaringan yang diuji memiliki 15 simpul dan 27 koneksi kandidat. MST yang ditampilkan terdiri atas 14 sisi dengan total panjang 11.002,94 meter dan estimasi biaya Rp550.146.925.
+Jumlah sisi MST: 14.
 
-Hasil validasi menunjukkan bahwa graf awal terhubung, MST terhubung, jumlah sisi MST sama dengan jumlah simpul dikurangi satu, MST tidak memiliki siklus, dan perhitungan total panjang dinyatakan konsisten.
+Total panjang MST: 11.002,94 meter.
 
-### 9.2 Uji Coba 2: Perubahan Panjang Koneksi
+Estimasi biaya: Rp550.146.925.
 
-**Tujuan:** Mengamati pengaruh perubahan panjang koneksi terhadap struktur MST dan estimasi biaya jaringan.
+Estimasi biaya menggunakan tarif simulasi sebesar Rp50.000 per meter. Tarif tersebut merupakan asumsi untuk kebutuhan simulasi, bukan harga pemasangan aktual.
 
-**Langkah pengujian:**
+9.2 Perubahan Panjang Koneksi
 
-1. Memilih koneksi kandidat `100445 — 100453`.
-2. Mencatat panjang awal koneksi sebesar 1.869,49 meter.
-3. Mengubah panjang koneksi menjadi 3.000 meter.
-4. Menerapkan perubahan untuk menghitung ulang MST.
-5. Mengamati visualisasi jaringan dan panel perbandingan MST.
-6. Memeriksa koneksi yang masuk dan keluar dari MST.
-7. Memeriksa kembali hasil validasi.
+Pengujian dilakukan dengan mengubah panjang koneksi antara simpul 100445 dan 100453 dari 1.869,49 meter menjadi 3.000 meter.
 
-**Hasil aktual:**
+Setelah perubahan, koneksi 100445 — 100453 keluar dari MST dan koneksi 100453 — 100457 dengan panjang 1.869,49 meter masuk ke MST.
 
-Setelah panjang koneksi `100445 — 100453` diubah dari 1.869,49 meter menjadi 3.000 meter, aplikasi menampilkan perubahan struktur MST.
+Total panjang MST tetap 11.002,94 meter karena panjang koneksi yang masuk sama dengan panjang koneksi yang sebelumnya terpilih. Oleh karena itu, estimasi biaya juga tetap Rp550.146.925.
 
-Koneksi `100445 — 100453` keluar dari MST, sedangkan koneksi `100453 — 100457` dengan panjang 1.869,49 meter masuk ke MST. Perubahan tersebut ditampilkan pada panel perbandingan MST dan divisualisasikan melalui perubahan warna koneksi.
+Pengujian ini menunjukkan bahwa perubahan bobot sisi dapat mengubah susunan MST tanpa mengubah total panjang dan biaya akhirnya.
 
-Pada tampilan setelah perubahan, total panjang MST masih tercatat sebesar 11.002,94 meter dan estimasi biaya sebesar Rp550.146.925. Nilai total tersebut perlu dipastikan kembali menggunakan hasil perhitungan terbaru karena koneksi yang masuk dan keluar memiliki panjang yang sama pada tampilan aplikasi.
+10. Validasi Hasil
 
-Hasil validasi yang ditampilkan aplikasi tetap menunjukkan bahwa graf awal terhubung, MST terhubung, jumlah sisi MST sama dengan jumlah simpul dikurangi satu, MST tidak memiliki siklus, dan perhitungan total panjang konsisten.
+Validasi dilakukan untuk memastikan bahwa hasil algoritma Kruskal memenuhi karakteristik Minimum Spanning Tree, yaitu:
 
-### 9.3 Analisis Hasil Pengujian
+Graf hasil MST terhubung.
 
-Perubahan panjang koneksi dapat memengaruhi urutan pemilihan sisi dalam algoritma Kruskal. Ketika suatu koneksi menjadi lebih panjang, koneksi lain dapat menggantikannya apabila menghasilkan jaringan yang lebih pendek tanpa membentuk siklus.
+Jumlah sisi MST sama dengan jumlah simpul dikurangi satu.
 
-Perubahan struktur MST tidak selalu menyebabkan perubahan total panjang. Apabila sisi yang masuk memiliki panjang yang sama dengan sisi yang keluar, total panjang dapat tetap sama. Namun, total panjang dan estimasi biaya perlu diperiksa berdasarkan seluruh sisi MST terbaru untuk memastikan konsistensi hasil perhitungan.
+MST tidak mengandung siklus.
 
-## 10. Validasi Hasil
+Total bobot MST sesuai dengan penjumlahan bobot seluruh sisi terpilih.
 
-Aplikasi menyediakan pemeriksaan untuk memastikan bahwa hasil MST memenuhi karakteristik pohon rentang minimum.
+Berdasarkan hasil pengujian aplikasi, pemeriksaan validasi menunjukkan hasil yang sesuai dengan karakteristik MST.
 
-Validasi yang dilakukan meliputi:
+11. Dokumentasi Pengujian
 
-1. **Graf awal terhubung:** memastikan jaringan kandidat yang digunakan dapat menghubungkan seluruh simpul.
-2. **MST terhubung:** memastikan semua simpul tetap terhubung setelah pemilihan sisi.
-3. **Jumlah sisi MST:** memastikan MST memiliki tepat \(n-1\) sisi.
-4. **Tidak ada siklus:** memastikan sisi terpilih tidak membentuk siklus.
-5. **Konsistensi total panjang:** memeriksa kesesuaian total panjang dengan penjumlahan bobot sisi terpilih.
+Dokumentasi pengujian disimpan pada folder bukti_pengujian. Folder tersebut berisi tangkapan layar ringkasan jaringan, visualisasi awal, perubahan panjang koneksi, visualisasi setelah perubahan, perbandingan MST, dan daftar koneksi MST.
 
-Pada pengujian yang dilakukan, seluruh pemeriksaan tersebut ditampilkan dengan status berhasil oleh aplikasi.
+12. Batasan Model
 
-## 11. Pertanyaan Presentasi
+Aplikasi ini menggunakan panjang koneksi sebagai bobot untuk menentukan MST. Estimasi biaya dihitung berdasarkan tarif simulasi per meter.
 
-**Mengapa turunnya biaya satu sambungan belum tentu mengubah pohon terpilih?**
+Model belum memperhitungkan kondisi medan, hambatan fisik, kapasitas jaringan, perbedaan material, dan biaya pemasangan aktual. Oleh karena itu, hasil aplikasi merupakan simulasi matematis dan belum dapat dianggap sebagai rancangan pemasangan jaringan yang siap diterapkan.
 
-Penurunan biaya satu sambungan tidak selalu mengubah MST karena pemilihan sisi tetap bergantung pada keseluruhan struktur graf dan bobot sisi lainnya. Jika perubahan bobot tidak mengubah keputusan pemilihan sisi oleh algoritma Kruskal, MST dapat tetap sama. Sebaliknya, jika perubahan bobot mengubah urutan pemilihan atau membuat alternatif yang lebih menguntungkan, struktur MST dapat berubah.
+13. Kesimpulan
 
-## 12. Bukti Pengujian
+Cheapest Network Builder berhasil memodelkan permasalahan jaringan sebagai graf berbobot tak berarah dan menentukan Minimum Spanning Tree menggunakan algoritma Kruskal. Aplikasi memungkinkan pengguna mengubah bobot koneksi dan mengamati perubahan sisi yang terpilih dalam MST.
 
-Tangkapan layar hasil pengujian disimpan dalam folder `bukti_pengujian/` dan digunakan untuk mendokumentasikan:
-
-1. Tampilan awal aplikasi dan jaringan kandidat.
-2. Proses perubahan panjang koneksi.
-3. Hasil perbandingan MST setelah perubahan.
-4. Hasil validasi MST.
-
-Bukti tersebut menunjukkan pelaksanaan pengujian terhadap fitur utama aplikasi Cheapest Network Builder.
-
-## 13. Kesimpulan
-
-Cheapest Network Builder merupakan aplikasi interaktif untuk memodelkan jaringan dan menentukan Minimum Spanning Tree menggunakan algoritma Kruskal. Aplikasi menyediakan visualisasi graf, perubahan panjang koneksi, perhitungan ulang MST, perbandingan koneksi yang masuk dan keluar, estimasi biaya, serta validasi hasil.
-
-Melalui dua skenario pengujian, pengguna dapat mengamati bahwa perubahan panjang suatu koneksi dapat mengubah struktur MST. Hasil akhir perlu tetap diperiksa melalui validasi dan penjumlahan bobot seluruh sisi terpilih.
-
-Estimasi biaya yang ditampilkan merupakan hasil simulasi berdasarkan tarif per meter yang ditentukan pengguna, bukan harga pemasangan aktual. Model juga belum memperhitungkan hambatan fisik, kapasitas kabel, kondisi lapangan, dan biaya pemeliharaan.
+Hasil pengujian menunjukkan bahwa perubahan bobot dapat mengubah susunan MST tanpa selalu mengubah total panjang jaringan. Aplikasi juga menyediakan visualisasi dan validasi untuk membantu memahami proses penentuan jaringan dengan total panjang minimum.
