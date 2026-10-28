@@ -1,3 +1,5 @@
+import json
+import streamlit.components.v1 as components
 from streamlit_agraph import agraph, Node, Edge, Config
 from pathlib import Path
 import pandas as pd
@@ -434,19 +436,20 @@ st.caption(
 
 
 
+
 # =====================================================
-# 6. VISUALISASI INTERAKTIF + ANIMASI KRUSKAL
+# 6. VISUALISASI ANIMASI KRUSKAL
 # =====================================================
 
 st.markdown("### LIVE TOPOLOGY")
 st.header("Visualisasi dan Simulasi Kruskal")
 
 st.caption(
-    "Geser simpul dengan mouse. Jalankan simulasi untuk melihat "
-    "algoritma Kruskal memeriksa koneksi satu per satu."
+    "Tekan Play untuk melihat koneksi diperiksa satu per satu. "
+    "Simpul dapat digeser dengan mouse."
 )
 
-# Urutkan koneksi berdasarkan bobot, sama seperti algoritma Kruskal
+# Urutkan semua koneksi berdasarkan bobot
 urutan_koneksi = sorted(
     g.edges(data=True),
     key=lambda e: (
@@ -456,7 +459,7 @@ urutan_koneksi = sorted(
     )
 )
 
-# Buat catatan setiap langkah Kruskal
+# Simpan keputusan Kruskal untuk setiap koneksi
 parent_anim = {n: n for n in g.nodes()}
 rank_anim = {n: 0 for n in g.nodes()}
 
@@ -482,178 +485,384 @@ def union_anim(a, b):
     return True
 
 langkah_anim = []
-diterima_anim = []
+terpilih_anim = []
 
 for u, v, attr in urutan_koneksi:
     diterima = union_anim(u, v)
 
     if diterima:
-        diterima_anim.append(key_edge(u, v))
+        terpilih_anim.append(key_edge(u, v))
 
     langkah_anim.append({
-        "u": u,
-        "v": v,
+        "u": str(u),
+        "v": str(v),
         "weight": float(attr["weight"]),
         "accepted": diterima,
-        "selected": diterima_anim.copy()
+        "selected": [list(e) for e in terpilih_anim]
     })
 
-    if len(diterima_anim) == g.number_of_nodes() - 1:
+    if len(terpilih_anim) == g.number_of_nodes() - 1:
         break
 
-# Status pemutar animasi
-if "kruskal_step" not in st.session_state:
-    st.session_state["kruskal_step"] = 0
+# Siapkan data untuk visualisasi
+nodes_data = [
+    {"id": str(n), "label": str(n)}
+    for n in g.nodes()
+]
 
-if "kruskal_playing" not in st.session_state:
-    st.session_state["kruskal_playing"] = False
+edges_data = [
+    {
+        "u": str(u),
+        "v": str(v),
+        "weight": float(attr["weight"])
+    }
+    for u, v, attr in g.edges(data=True)
+]
 
-jumlah_langkah = len(langkah_anim)
-st.session_state["kruskal_step"] = min(
-    max(0, st.session_state["kruskal_step"]),
-    max(0, jumlah_langkah - 1)
-)
+# HTML dan JavaScript untuk animasi canvas
+html = r"""
+<div id="network-app">
+<style>
+#network-app {
+    font-family: Arial, sans-serif;
+    color: #eaf1ff;
+    background: #0b1220;
+    border: 1px solid #293a55;
+    border-radius: 16px;
+    padding: 14px;
+}
+#network-canvas {
+    width: 100%;
+    height: 520px;
+    display: block;
+    background: radial-gradient(circle at center, #17263b, #0b1220 78%);
+    border-radius: 12px;
+    cursor: grab;
+    touch-action: none;
+}
+#network-canvas:active { cursor: grabbing; }
+#network-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0;
+}
+#network-controls button {
+    border: 1px solid #405674;
+    background: #1b2b43;
+    color: white;
+    border-radius: 9px;
+    padding: 10px 13px;
+    font-weight: bold;
+    cursor: pointer;
+}
+#network-controls button:hover { background: #29486b; }
+#network-status {
+    background: #142139;
+    border: 1px solid #293a55;
+    padding: 12px;
+    border-radius: 10px;
+    line-height: 1.6;
+}
+#network-progress {
+    width: 100%;
+    accent-color: #38bdf8;
+    margin: 12px 0;
+}
+.network-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    color: #c5d2e5;
+    font-size: 12px;
+    margin-top: 10px;
+}
+.legend-dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+</style>
 
-# Kontrol simulasi
-p1, p2, p3, p4, p5 = st.columns(5)
+<canvas id="network-canvas"></canvas>
 
-with p1:
-    if st.button("▶ Jalankan", use_container_width=True):
-        st.session_state["kruskal_playing"] = True
+<div id="network-controls">
+    <button id="play">▶ Play</button>
+    <button id="pause">⏸ Pause</button>
+    <button id="prev">⏮ Sebelumnya</button>
+    <button id="next">⏭ Berikutnya</button>
+    <button id="reset">↺ Reset</button>
+</div>
 
-with p2:
-    if st.button("⏸ Jeda", use_container_width=True):
-        st.session_state["kruskal_playing"] = False
+<input id="network-progress" type="range" min="0" max="0" value="0">
 
-with p3:
-    if st.button("⏮ Sebelumnya", use_container_width=True):
-        st.session_state["kruskal_playing"] = False
-        st.session_state["kruskal_step"] = max(
-            0, st.session_state["kruskal_step"] - 1
-        )
+<div id="network-status">Menyiapkan simulasi...</div>
 
-with p4:
-    if st.button("⏭ Berikutnya", use_container_width=True):
-        st.session_state["kruskal_playing"] = False
-        st.session_state["kruskal_step"] = min(
-            jumlah_langkah - 1,
-            st.session_state["kruskal_step"] + 1
-        )
+<div class="network-legend">
+    <span><i class="legend-dot" style="background:#43a5ff"></i>Simpul</span>
+    <span><i class="legend-dot" style="background:#fbbf24"></i>Sedang diperiksa</span>
+    <span><i class="legend-dot" style="background:#ff5263"></i>Terpilih ke MST</span>
+    <span><i class="legend-dot" style="background:#718096"></i>Ditolak / belum diperiksa</span>
+</div>
+</div>
 
-with p5:
-    if st.button("↺ Reset", use_container_width=True):
-        st.session_state["kruskal_playing"] = False
-        st.session_state["kruskal_step"] = 0
+<script>
+const nodesData = __NODES__;
+const edgesData = __EDGES__;
+const steps = __STEPS__;
 
-# Fragment menjalankan animasi otomatis setiap 1 detik saat diputar
-@st.fragment(
-    run_every=1.0 if st.session_state["kruskal_playing"] else None
-)
-def tampilkan_simulasi():
-    idx = st.session_state["kruskal_step"]
-    langkah = langkah_anim[idx]
+const canvas = document.getElementById("network-canvas");
+const ctx = canvas.getContext("2d");
+const progress = document.getElementById("network-progress");
+const statusBox = document.getElementById("network-status");
 
-    if st.session_state["kruskal_playing"]:
-        if idx < jumlah_langkah - 1:
-            st.session_state["kruskal_step"] = idx + 1
-        else:
-            st.session_state["kruskal_playing"] = False
+let step = 0;
+let playing = false;
+let timer = null;
+let nodes = [];
+let dragging = null;
+let pointer = null;
+let dpr = window.devicePixelRatio || 1;
 
-    # Langkah yang ditampilkan
-    idx = st.session_state["kruskal_step"]
-    langkah = langkah_anim[idx]
+function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    st.progress((idx + 1) / jumlah_langkah)
-    st.caption(f"Langkah {idx + 1} dari {jumlah_langkah}")
+    if (nodes.length === 0) {
+        const w = rect.width;
+        const h = rect.height;
+        nodes = nodesData.map((n, i) => {
+            const angle = 2 * Math.PI * i / nodesData.length;
+            return {
+                id: n.id,
+                label: n.label,
+                x: w / 2 + Math.cos(angle) * Math.min(w, h) * 0.34,
+                y: h / 2 + Math.sin(angle) * h * 0.34,
+                vx: 0,
+                vy: 0
+            };
+        });
+    }
+    draw();
+}
 
-    u, v = langkah["u"], langkah["v"]
+function edgeKey(a, b) {
+    return [String(a), String(b)].sort().join("||");
+}
 
-    if langkah["accepted"]:
-        st.success(
-            f"Koneksi {u} — {v} ({langkah['weight']:.2f} m) "
-            "DITERIMA: tidak membentuk siklus."
-        )
-    else:
-        st.warning(
-            f"Koneksi {u} — {v} ({langkah['weight']:.2f} m) "
-            "DITOLAK: membentuk siklus."
-        )
+function draw() {
+    const rect = canvas.getBoundingClientRect();
+    const w = rect.width;
+    const h = rect.height;
+    ctx.clearRect(0, 0, w, h);
 
-    # Warna koneksi:
-    # merah = sudah diterima, kuning = sedang diperiksa,
-    # abu-abu = belum dipilih atau ditolak.
-    koneksi_diterima = set(langkah["selected"])
-    koneksi_sekarang = key_edge(u, v)
+    const current = steps[step];
+    const selected = new Set(
+        current ? current.selected.map(e => edgeKey(e[0], e[1])) : []
+    );
+    const currentKey = current ? edgeKey(current.u, current.v) : "";
 
-    nodes = [
-        Node(
-            id=str(n),
-            label=str(n),
-            size=24,
-            color="#43a5ff",
-            font={"color": "#eaf1ff", "size": 15},
-            borderWidth=2
-        )
-        for n in g.nodes()
-    ]
+    // Gambar semua kabel kandidat
+    for (const e of edgesData) {
+        const key = edgeKey(e.u, e.v);
+        const a = nodes.find(n => n.id === e.u);
+        const b = nodes.find(n => n.id === e.v);
+        if (!a || !b) continue;
 
-    edges = []
+        let color = "#52627b";
+        let width = 1.4;
+        let dash = [];
 
-    for a, b, attr in g.edges(data=True):
-        k = key_edge(a, b)
-
-        if k == koneksi_sekarang:
-            warna = "#fbbf24"
-            lebar = 6
-        elif k in koneksi_diterima:
-            warna = "#ff5263"
-            lebar = 4
-        else:
-            warna = "#52627b"
-            lebar = 1
-
-        edges.append(
-            Edge(
-                source=str(a),
-                target=str(b),
-                label=f"{attr['weight']:.0f} m",
-                color=warna,
-                width=lebar,
-                title=(
-                    f"{a} — {b}: {attr['weight']:.2f} m"
-                )
-            )
-        )
-
-    config = Config(
-        width="100%",
-        height=560,
-        directed=False,
-        physics=False,
-        hierarchical=False,
-        nodeHighlightBehavior=True,
-        highlightColor="#ffd166",
-        collapsible=False,
-        interaction={
-            "dragNodes": True,
-            "dragView": True,
-            "zoomView": True
+        if (key === currentKey) {
+            color = "#fbbf24";
+            width = 5;
+        } else if (selected.has(key)) {
+            color = "#ff5263";
+            width = 3.5;
+        } else if (step > 0) {
+            const wasChecked = steps
+                .slice(0, step)
+                .some(s => edgeKey(s.u, s.v) === key);
+            if (wasChecked) {
+                color = "#718096";
+                width = 1.5;
+                dash = [5, 5];
+            }
         }
-    )
 
-    agraph(nodes=nodes, edges=edges, config=config)
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.setLineDash(dash);
+        ctx.stroke();
+        ctx.setLineDash([]);
 
-    st.caption(
-        "🟡 Sedang diperiksa · 🔴 Diterima dalam MST · "
-        "Abu-abu: koneksi lainnya"
-    )
+        // Label panjang kabel
+        const mx = (a.x + b.x) / 2;
+        const my = (a.y + b.y) / 2;
+        ctx.font = "10px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#dbeafe";
+        ctx.fillText(Math.round(e.weight) + " m", mx, my - 7);
+    }
 
-    st.metric(
-        "Koneksi diterima sampai langkah ini",
-        len(langkah["selected"])
-    )
+    // Gambar simpul
+    for (const n of nodes) {
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, 17, 0, Math.PI * 2);
+        ctx.fillStyle = "#1877c9";
+        ctx.fill();
+        ctx.strokeStyle = "#93c5fd";
+        ctx.lineWidth = 2;
+        ctx.stroke();
 
-tampilkan_simulasi()
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 10px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(n.label, n.x, n.y);
+    }
+
+    if (current) {
+        const result = current.accepted
+            ? "DITERIMA — tidak membentuk siklus."
+            : "DITOLAK — membentuk siklus.";
+        statusBox.innerHTML =
+            "<b>Langkah " + (step + 1) + " dari " + steps.length +
+            "</b><br>Koneksi: " + current.u + " — " + current.v +
+            " (" + current.weight.toFixed(2) + " m)<br>" +
+            result + "<br>Koneksi terpilih: " + current.selected.length;
+        progress.value = step;
+    }
+}
+
+// Gerakan lembut agar jaringan terasa hidup.
+// Posisi simpul yang sedang diseret tidak ikut bergerak.
+function animatePhysics() {
+    if (!dragging) {
+        const w = canvas.getBoundingClientRect().width;
+        const h = canvas.getBoundingClientRect().height;
+        const cx = w / 2, cy = h / 2;
+
+        for (let i = 0; i < nodes.length; i++) {
+            const a = nodes[i];
+            let fx = (cx - a.x) * 0.0008;
+            let fy = (cy - a.y) * 0.0008;
+
+            for (let j = 0; j < nodes.length; j++) {
+                if (i === j) continue;
+                const b = nodes[j];
+                let dx = a.x - b.x;
+                let dy = a.y - b.y;
+                let d2 = dx * dx + dy * dy;
+                if (d2 < 1) d2 = 1;
+                if (d2 < 10000) {
+                    fx += dx * 18 / d2;
+                    fy += dy * 18 / d2;
+                }
+            }
+
+            a.vx = (a.vx + fx) * 0.94;
+            a.vy = (a.vy + fy) * 0.94;
+            a.x += a.vx;
+            a.y += a.vy;
+            a.x = Math.max(22, Math.min(w - 22, a.x));
+            a.y = Math.max(22, Math.min(h - 22, a.y));
+        }
+    }
+    draw();
+    requestAnimationFrame(animatePhysics);
+}
+
+function stopPlayback() {
+    playing = false;
+    if (timer !== null) clearInterval(timer);
+    timer = null;
+}
+
+function nextStep() {
+    if (step < steps.length - 1) {
+        step++;
+        draw();
+    } else {
+        stopPlayback();
+    }
+}
+
+function startPlayback() {
+    if (playing) return;
+    if (step >= steps.length - 1) step = 0;
+    playing = true;
+    timer = setInterval(nextStep, 900);
+}
+
+document.getElementById("play").onclick = startPlayback;
+document.getElementById("pause").onclick = stopPlayback;
+document.getElementById("next").onclick = () => {
+    stopPlayback();
+    nextStep();
+};
+document.getElementById("prev").onclick = () => {
+    stopPlayback();
+    step = Math.max(0, step - 1);
+    draw();
+};
+document.getElementById("reset").onclick = () => {
+    stopPlayback();
+    step = 0;
+    draw();
+};
+progress.oninput = () => {
+    stopPlayback();
+    step = Number(progress.value);
+    draw();
+};
+
+// Geser simpul dengan mouse atau layar sentuh
+function getPointer(event) {
+    const rect = canvas.getBoundingClientRect();
+    return {x: event.clientX - rect.left, y: event.clientY - rect.top};
+}
+canvas.addEventListener("pointerdown", event => {
+    pointer = getPointer(event);
+    dragging = nodes.find(n =>
+        Math.hypot(n.x - pointer.x, n.y - pointer.y) < 22
+    ) || null;
+    if (dragging) canvas.setPointerCapture(event.pointerId);
+});
+canvas.addEventListener("pointermove", event => {
+    if (!dragging) return;
+    pointer = getPointer(event);
+    dragging.x = pointer.x;
+    dragging.y = pointer.y;
+    dragging.vx = 0;
+    dragging.vy = 0;
+    draw();
+});
+canvas.addEventListener("pointerup", () => { dragging = null; });
+canvas.addEventListener("pointercancel", () => { dragging = null; });
+
+progress.max = Math.max(0, steps.length - 1);
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
+requestAnimationFrame(animatePhysics);
+</script>
+"""
+
+html = (
+    html.replace("__NODES__", json.dumps(nodes_data))
+        .replace("__EDGES__", json.dumps(edges_data))
+        .replace("__STEPS__", json.dumps(langkah_anim))
+)
+
+components.html(html, height=760, scrolling=False)
 
 
 
